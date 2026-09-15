@@ -13,6 +13,11 @@ lab2 = st.Page(
 lab3 = st.Page(
     'labs/lab3.py',
     title = 'Lab 3',
+)
+
+lab4 = st.Page(
+    'labs/lab4.py',
+    title = 'Lab 4',
     default = True
 )
 
