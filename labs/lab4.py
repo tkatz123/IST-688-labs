@@ -64,10 +64,10 @@ def load_pdfs_to_collection(folder_path, collection):
         add_to_collection(collection, file_text, file_path.stem)
         
 
-'''
+
 if collection.count() == 0:
     loaded = load_pdfs_to_collection('data/Lab-04-Data', collection)
-'''
+
 
 # Show title and description.
 st.title("Lab 4: Chatbot Using RAG")
