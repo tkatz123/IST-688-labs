@@ -21,7 +21,7 @@ lab4 = st.Page(
     default = True
 )
 
-pg = st.navigation([lab1, lab2, lab3])
+pg = st.navigation([lab1, lab2, lab3, lab4])
 st.set_page_config(page_title='IST 688 Labs', page_icon=None, layout="centered", initial_sidebar_state="expanded")
 pg.run()
 
