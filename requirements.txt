@@ -4,3 +4,5 @@ tiktoken
 chromadb
 pysqlite3-binary; sys_platform == "linux"
 pypdf
+langchain
+langchain-openai
