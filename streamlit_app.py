@@ -28,10 +28,15 @@ lab5 = st.Page(
 lab6 = st.Page(
     'labs/LabLangChain.py',
     title = 'Lab 6',
+)
+
+lab8 = st.Page(
+    'labs/LabMultimodal.py',
+    title = 'Lab 8',
     default = True
 )
 
-pg = st.navigation([lab1, lab2, lab3, lab4, lab5, lab6])
+pg = st.navigation([lab1, lab2, lab3, lab4, lab5, lab6, lab8])
 st.set_page_config(page_title='IST 688 Labs', page_icon=None, layout="centered", initial_sidebar_state="expanded")
 pg.run()
 
