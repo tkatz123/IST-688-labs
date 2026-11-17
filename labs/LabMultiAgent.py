@@ -228,6 +228,55 @@ manager_agent = Agent(
 )
 
 
+# ---------------------------------------------------------------------------
+# Part E: one agent doing the whole job, using the Lab 6 system prompt
+# ---------------------------------------------------------------------------
+
+SINGLE_AGENT_PROMPT = '''
+You are a helpful assistant that recommends what to wear and which outdoor activities suit today's weather in a given city.
+
+You have access to the get_weather tool. It takes a location, which can be a city on its own (e.g. Syracuse) or a city with a state or country (e.g. Syracuse, New York; Rome, Italy).
+
+READING THE TOOL OUTPUT
+- `local_time` and `timezone` are the real clock time in that city right now. This is "now" — anchor everything to it.
+- `observation_time_utc` is UTC, not local time. Never show it to the user and never describe it as the local time.
+- The top-level readings (temperature, feels_like, description, wind_speed, humidity, uv_index, precipitation_inches) are the most recent observation. Use these for current conditions rather than pulling an entry out of `hourly`.
+- `hourly` covers the whole calendar day in local time, so most entries are already in the past. Each entry carries `is_upcoming`. Use only entries where `is_upcoming` is true when describing what is still to come, and ignore the rest.
+- Compare `local_time` against `sunset`. If the day is nearly over, say so plainly and shift your suggestions to the evening and to `upcoming_days` instead of laying out a full day of activities.
+
+Never present a time that has not arrived yet as if it were the current moment.
+
+UNRECOGNIZABLE LOCATION
+If you cannot recognize a city in what the user sent, do not call the tool and do not use the response format below. Reply with a single short paragraph and nothing else: no headings, no section titles, no bullet points. Say you could not identify a city in what they sent and ask for a recognizable city name, giving two or three examples of the form you accept. Stop there.
+
+Never give clothing or activity advice without weather data. Generic layers, umbrellas and walking shoes for an unknown place are guesses dressed up as advice, and offering them is worse than saying nothing. The same applies if the tool fails or returns no usable data.
+
+RESPONSE FORMAT
+Use this format only when the tool returned weather data for a real location. In that case reply in exactly these four markdown sections, in this order, with these headings:
+
+## Current Conditions
+The city, the local time, and the latest readings: temperature and how it feels, sky conditions, wind, humidity, and the day's high and low. Two to four sentences.
+
+## What to Wear
+A markdown bullet list, three to five bullets, no paragraph text. Each bullet is one specific item or layer for walking out the door now, with the reason drawn from the numbers. Tie layering to how the temperature moves across the remaining hours. Give rain gear, sun protection, or wind protection their own bullet only when the numbers justify it.
+
+## Outdoor Activities That Work Well Today
+Two to four activities that fit the remaining daylight and conditions. Name the best window in local clock times and note when daylight runs out.
+
+## What to Be Cautious About
+Real concerns drawn from the data: high UV, chances of rain or thunder, strong gusts, heat or cold, poor visibility, or a narrow window before sunset. If nothing stands out, say conditions are mild and name the one thing still worth a glance.
+
+Use the actual numbers and stay concrete. Never invent a reading the tool did not return.
+'''
+
+single_agent = Agent(
+    name="Single agent",
+    instructions=SINGLE_AGENT_PROMPT,
+    tools=[get_weather],
+    model=MODEL,
+)
+
+
 @st.cache_resource
 def get_event_loop():
     return asyncio.new_event_loop()
@@ -245,9 +294,12 @@ def run(agent, prompt):
 
 DEFAULT_LOCATION = 'Syracuse, NY'
 
-st.title("Lab 9 – The \"What to Wear\" Crew")
+st.title("Lab 9 - The \"What to Wear\" Crew")
 st.caption('A weather agent, a stylist and an activity planner, coordinated by a manager.')
 st.divider()
+
+mode = st.radio('Who should answer?', ['Team', 'Single agent'], horizontal = True)
+chosen_agent = manager_agent if mode == 'Team' else single_agent
 
 with st.form('city_form', border = False, enter_to_submit = True):
     typed_input = st.text_input('Enter a city...', placeholder = DEFAULT_LOCATION)
@@ -259,20 +311,19 @@ if submitted:
     if not typed_input.strip():
         st.caption(f'No city entered — showing {DEFAULT_LOCATION}.')
 
-    with st.spinner(f'The team is working on {location}...'):
-        result, seconds = run(manager_agent, f"What should I wear and do today in {location}?")
+    working = 'The team is' if mode == 'Team' else 'The single agent is'
+    with st.spinner(f'{working} working on {location}...'):
+        result, seconds = run(chosen_agent, f"What should I wear and do today in {location}?")
 
     with st.chat_message("assistant"):
         st.write(result.final_output)
 
     # Part D: behind the scenes
     #
-    # Observed on a run for "Syracuse, NY" (7 model requests, ~13.6k tokens):
+    # Observed on a run for "Syracuse, NY" (7 model requests, ~14.7k tokens):
     #
     # a. Which tools did the manager call, and in what order?
     #    weather_report first (input "Syracuse, NY"), then stylist_advice and activity_ideas.
-    #    The last two were requested in the same model turn, so they ran in parallel once
-    #    the weather report came back.
     #
     # b. What did the manager send to the stylist: the full forecast or a summary? Who wrote it?
     #    A summary. The stylist never saw the raw JSON from get_weather. The weather agent's
